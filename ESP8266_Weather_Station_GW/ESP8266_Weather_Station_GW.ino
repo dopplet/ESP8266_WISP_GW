@@ -5,7 +5,7 @@
 
 // Defines
 #define DEBUG
-
+#define INVALID_DATA -1
 
 // Constants
 const long interval = 900000;
@@ -20,9 +20,6 @@ const String WU_PASS = "8obbbera";
 float   winddir, windspeedmph, windgustmph, windgustdir, windspdmph_avg2m, humidity, tempf, rainin, dailyrainin, baromin, dewptf;
 int     dollarsign, hash, comma1, comma2, valid, datastat, TIMER;
 String  subdata, data;
-char    buffer[300];
-int     bufpnt;
-
 
 // Classes
 ESP8266WiFiMulti WiFiMulti;
@@ -46,7 +43,7 @@ float convertToInHg(float pressure_Pa)
 // Parse input string into discrete global variables
 //
 int parsewispdata() {
-  int retvalue;
+  int retvalue = 1;
   
   dollarsign = data.indexOf('$');
   hash = data.indexOf('#');
@@ -105,11 +102,12 @@ int parsewispdata() {
         valid = 0;
       }
     }
-    retvalue = 1;
+    Serial.println("Invalid Data");
+    retvalue = INVALID_DATA;
   }
   else {
     Serial.println("Invalid Data");
-    retvalue = -1;
+    retvalue = INVALID_DATA;
   }
   return retvalue;
 }
@@ -173,9 +171,16 @@ void loop() {
   }
 
   // - Get Data line Start $ End #
-  if ( 0 < Serial.readBytes( buffer, sizeof( buffer ) ) )
+  data = Serial.readStringUntil( '#' ) ;
+  if ( data.length() > 0 )
   {
+    // we got something, check the string we got back
     validInput = parsewispdata();
+  }
+  else
+  {
+    // we got nothing?!!
+    Serial.println("Invalid Data from readString?!!");
   }
 
   if ( validInput ) {
