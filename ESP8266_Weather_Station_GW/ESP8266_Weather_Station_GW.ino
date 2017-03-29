@@ -5,7 +5,7 @@
 
 // Defines
 #define DEBUG
-
+#define INVALID_DATA -1
 
 // Constants
 const long interval = 900000;
@@ -20,9 +20,6 @@ const String WU_PASS = "8obbbera";
 float   winddir, windspeedmph, windgustmph, windgustdir, windspdmph_avg2m, humidity, tempf, rainin, dailyrainin, baromin, dewptf;
 int     dollarsign, hash, comma1, comma2, valid, datastat, TIMER;
 String  subdata, data;
-char    buffer[300];
-int     bufpnt;
-
 
 // Classes
 ESP8266WiFiMulti WiFiMulti;
@@ -46,7 +43,7 @@ float convertToInHg(float pressure_Pa)
 // Parse input string into discrete global variables
 //
 int parsewispdata() {
-  int retvalue;
+  int retvalue = 1;
   
   dollarsign = data.indexOf('$');
   hash = data.indexOf('#');
@@ -105,11 +102,12 @@ int parsewispdata() {
         valid = 0;
       }
     }
-    retvalue = 1;
+    Serial.println("Invalid Data");
+    retvalue = INVALID_DATA;
   }
   else {
     Serial.println("Invalid Data");
-    retvalue = -1;
+    retvalue = INVALID_DATA;
   }
   return retvalue;
 }
@@ -128,6 +126,12 @@ void setup() {
       Serial.print(".");
     #endif
   }
+
+  // start up the serial connection
+  Serial.begin(14400) ;
+  // set the timeout for reading to 1 second
+  Serial.setTimeout(1000) ;
+
   #ifdef DEBUG
     Serial.println("");
     Serial.println("WiFi connected");
@@ -150,29 +154,36 @@ void loop() {
   baromin = -1;
   dewptf = -1000;
   
-  int validinput = 0;
-  int looptime = 0;
-  int commandsent = 0;
-  
-  // Eat up anything in the serial buffer now, can't trust it's contents
-  if ( Serial.available() > 0 ) {
-    char temp = Serial.read();
-  }
-  // Loop that sends a ! to the WISP and waits for valid data to return
-  while ( validinput == 0 ) {
-    // - Send WISP "!", this asks the WISP to tell us about the weather.
-    if ( commandsent == 0 ) {
-      Serial.print("!");
-      commandsent = 1;
-      delay(100);
-    }
-    // - Get Data line Start $ End #
-    //***** getwispdata();     // TBD sill need a routine to grab serial data into buf[] without blocking 
-    // - Parse Valid Data Line to discrete Variables
-    //*****validinput = parsewispdata(); // TBD mostly done, needs to point to valid buffer
-    delay(100);
-  }
+  int validInput = 0;
  
+  // trash any garbage found at the beginning
+  if ( Serial.available() > 0 ) {
+    Serial.read();
+  }
+
+  // - Send WISP "!", this asks the WISP to tell us about the weather.
+  while ( 1 != Serial.write("!") ) {
+    // we didn't send the right command over, sleep and re-try
+    if ( Serial.available() > 0 ) {
+      Serial.read();
+    }
+    delay(100) ;
+  }
+
+  // - Get Data line Start $ End #
+  data = Serial.readStringUntil( '#' ) ;
+  if ( data.length() > 0 )
+  {
+    // we got something, check the string we got back
+    validInput = parsewispdata();
+  }
+  else
+  {
+    // we got nothing?!!
+    Serial.println("Invalid Data from readString?!!");
+  }
+
+  if ( validInput ) {
     // - WiFi On
     WiFi.mode(WIFI_STA);
     while ( WiFiMulti.run() != WL_CONNECTED) {
@@ -249,6 +260,7 @@ void loop() {
       }
       delay(1000);
     }
+  }
 }
 
 /*
