@@ -6,6 +6,7 @@
 // Defines
 #define DEBUG
 #define INVALID_DATA -1
+#define VALID_DATA 1
 
 // Constants
 const long interval = 900000;
@@ -47,8 +48,16 @@ int parsewispdata() {
   
   dollarsign = data.indexOf('$');
   hash = data.indexOf('#');
+  #ifdef DEBUG
+  Serial.print("$=");
+  Serial.println(dollarsign);
+  Serial.print("#=");
+  Serial.println(hash);
+  #endif
   if ( dollarsign != -1 && hash != -1 ) {
+    #ifdef DEBUG
     Serial.println("Valid Data");
+    #endif
     valid = 1;
     comma1 = data.indexOf(',');
        
@@ -102,11 +111,15 @@ int parsewispdata() {
         valid = 0;
       }
     }
-    Serial.println("Invalid Data");
-    retvalue = INVALID_DATA;
+    #ifdef DEBUG
+    Serial.println("Valid Data");
+    #endif
+    retvalue = VALID_DATA;
   }
   else {
+    #ifdef DEBUG
     Serial.println("Invalid Data");
+    #endif
     retvalue = INVALID_DATA;
   }
   return retvalue;
@@ -123,12 +136,12 @@ void setup() {
   while (WiFiMulti.run() != WL_CONNECTED) {
     delay(500);
     #ifdef DEBUG
-      Serial.print(".");
+    Serial.print(".");
     #endif
   }
 
   // start up the serial connection
-  Serial.begin(14400) ;
+  Serial.begin(115200) ;
   // set the timeout for reading to 1 second
   Serial.setTimeout(1000) ;
 
@@ -171,16 +184,21 @@ void loop() {
   }
 
   // - Get Data line Start $ End #
-  data = Serial.readStringUntil( '#' ) ;
+  data = Serial.readStringUntil( 0x0A ) ;
   if ( data.length() > 0 )
   {
+    #ifdef DEBUG
+    Serial.println("Valid Data from readString!!!");
+    #endif
     // we got something, check the string we got back
     validInput = parsewispdata();
   }
   else
   {
     // we got nothing?!!
+    #ifdef DEBUG
     Serial.println("Invalid Data from readString?!!");
+    #endif
   }
 
   if ( validInput ) {
