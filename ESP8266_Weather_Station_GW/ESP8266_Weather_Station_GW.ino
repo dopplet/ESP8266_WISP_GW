@@ -9,7 +9,7 @@
 #define VALID_DATA 1
 
 // Constants
-const long interval = 900000;
+const long interval = 30000;
 const float LOCAL_ALTITUDE_METERS = 278.0;
 const String WU_USER = "INEWMARK17";
 const String WU_PASS = "8obbbera";
@@ -133,24 +133,13 @@ void setup() {
   WiFi.mode(WIFI_STA);
   WiFiMulti.addAP("WHINE", "AndrewHerdman");
   WiFiMulti.addAP("NewMakeIt_24", "YorkMakers");
-  while (WiFiMulti.run() != WL_CONNECTED) {
-    delay(500);
-    #ifdef DEBUG
-    Serial.print(".");
-    #endif
-  }
+
 
   // start up the serial connection
-  Serial.begin(115200) ;
+  Serial.begin(115200);
   // set the timeout for reading to 1 second
-  Serial.setTimeout(1000) ;
+  Serial.setTimeout(1000);
 
-  #ifdef DEBUG
-    Serial.println("");
-    Serial.println("WiFi connected");
-    Serial.println("IP address: ");
-    Serial.println(WiFi.localIP());
-  #endif
 }
 
 void loop() {
@@ -203,10 +192,22 @@ void loop() {
 
   if ( validInput ) {
     // - WiFi On
+    #ifdef DEBUG
+    Serial.println("Turning on WiFi...");
+    #endif
     WiFi.mode(WIFI_STA);
     while ( WiFiMulti.run() != WL_CONNECTED) {
       delay(500);
+      #ifdef DEBUG
+      Serial.print(".");
+      #endif
     }
+    #ifdef DEBUG
+    Serial.println("");
+    Serial.println("WiFi connected");
+    Serial.println("IP address: ");
+    Serial.println(WiFi.localIP());
+    #endif
     
     // - Send Wunderground http request
     String URL = "http://rtupdate.wunderground.com/weatherstation/updateweatherstation.php?ID=" + WU_USER + 
@@ -243,39 +244,43 @@ void loop() {
     int httpCode = http.GET();
     if ( httpCode > 0 ) {
       #ifdef DEBUG
-        Serial.printf("[HTTP] Get return code: %d\n", httpCode);
+      Serial.printf("[HTTP] Get return code: %d\n", httpCode);
       #endif
       if ( httpCode == HTTP_CODE_OK) {
         String payload = http.getString();
         #ifdef DEBUG
-          Serial.println("Web site response:");
-          Serial.println(payload);
-          // success
-          // INVALIDPASSWORDID|Password or key and/or id are incorrect
+        Serial.println("Web site response:");
+        Serial.println(payload);
+        // success
+        // INVALIDPASSWORDID|Password or key and/or id are incorrect
         #endif
       }
     }
     else {
       #ifdef DEBUG
-        Serial.printf("[HTTP] Get... failed, error %s\n", http.errorToString(httpCode).c_str());
+      Serial.printf("[HTTP] Get... failed, error %s\n", http.errorToString(httpCode).c_str());
       #endif
     }
 
     // - WiFi Off - uses much less power, delay required for sleep to take
     WiFi.mode(WIFI_OFF);
-    WiFi.forceSleepBegin();
+    //WiFi.forceSleepBegin();
     delay(100);
 
     // - Sleep 5 Minutes
     unsigned long previousMillis = 0;
     unsigned long currentMillis = 0;
     int sleeploop = 1; 
-    while ( sleeploop == 1) {
+    previousMillis = millis();
+    while ( sleeploop == 1) {  
       currentMillis = millis();
       if ( currentMillis - previousMillis >= interval ) {
         previousMillis = currentMillis;
         sleeploop = 0;
       }
+      #ifdef DEBUG
+      Serial.println("Sleeping 1000mS");
+      #endif
       delay(1000);
     }
   }
